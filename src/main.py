@@ -2,13 +2,16 @@ from flask import Flask, request, Response
 from flask_basicauth import BasicAuth
 import subprocess
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 # Create a Flask application
 app = Flask(__name__)
 
 # Basic Auth Config
-app.config['BASIC_AUTH_USERNAME'] = 'your_username'
-app.config['BASIC_AUTH_PASSWORD'] = 'your_password'
+app.config['BASIC_AUTH_USERNAME'] = os.getenv("BASIC_AUTH_USERNAME")
+app.config['BASIC_AUTH_PASSWORD'] = os.getenv("BASIC_AUTH_PASSWORD")
 basic_auth = BasicAuth(app)
 
 # Define a route for the root URL
