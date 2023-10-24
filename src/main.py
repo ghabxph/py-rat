@@ -16,8 +16,9 @@ basic_auth = BasicAuth(app)
 
 # Define a route for the root URL
 @app.route('/')
+@basic_auth.required
 def hello_world():
-    return 'Hello, World!'
+    return 'Welcome to Home RAT!'
 
 @app.route('/bash')
 @basic_auth.required
