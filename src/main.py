@@ -1,9 +1,15 @@
 from flask import Flask, request, Response
+from flask_basicauth import BasicAuth
 import subprocess
 import os
 
 # Create a Flask application
 app = Flask(__name__)
+
+# Basic Auth Config
+app.config['BASIC_AUTH_USERNAME'] = 'your_username'
+app.config['BASIC_AUTH_PASSWORD'] = 'your_password'
+basic_auth = BasicAuth(app)
 
 # Define a route for the root URL
 @app.route('/')
@@ -11,6 +17,7 @@ def hello_world():
     return 'Hello, World!'
 
 @app.route('/bash')
+@basic_auth.required
 def run_bash():
     # Get the value of the 'cmd' query parameter from the URL
     command = request.args.get('cmd', 'echo You didn\'t provide any command.')
@@ -31,6 +38,7 @@ def run_bash():
     return response
     
 @app.route('/cwd')
+@basic_auth.required
 def change_working_directory():
     # Get the value of the 'path' query parameter from the URL
     path = request.args.get('path', '')
