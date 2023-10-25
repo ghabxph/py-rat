@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, stream_with_context
 from flask_basicauth import BasicAuth
 import subprocess
 import os
@@ -13,6 +13,40 @@ app = Flask(__name__)
 app.config['BASIC_AUTH_USERNAME'] = os.getenv("BASIC_AUTH_USERNAME")
 app.config['BASIC_AUTH_PASSWORD'] = os.getenv("BASIC_AUTH_PASSWORD")
 basic_auth = BasicAuth(app)
+
+# Global variables to track the current running command and its output
+current_command = None
+command_output = None
+
+@stream_with_context
+def generate_output(command):
+    global current_command, command_output
+
+    try:
+        # Start the long-running process (e.g., Docker build)
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+
+        # Stream output to the client
+        for line in process.stdout:
+            yield line
+            command_output += line  # Store the output as it becomes available
+
+        process.stdout.close()
+        process.wait()
+
+    except Exception as e:
+        # Handle any exceptions and provide error information to the client
+        yield f"Error: {str(e)}"
+
+    # Once the command finishes, reset the current_command
+    current_command = None
 
 # Define a route for the root URL
 @app.route('/')
@@ -30,7 +64,7 @@ def run_bash():
     result = subprocess.run(['fish', '-c', command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Check the return code to see if the command was successful (0 indicates success)
-    if result.returncode == 0:
+    if result.returncode == 0: 
         response = Response(result.stdout)
     else:
         response = Response(result.stderr)
@@ -75,6 +109,27 @@ def change_working_directory():
 
     # Return response
     return response
+
+@app.route('/bashl')
+@basic_auth.required
+def bash_long_running():
+    global current_command, command_output
+
+    # Get the value of the 'cmd' query parameter from the URL
+    command = request.args.get('cmd', None)
+
+    # Check if a command is already in progress
+    if current_command:
+        return Response(f"Command '{current_command}' is already running.\n\n{command_output}", content_type="text/plain")
+
+    # If no command is in progress, set the current_command
+    current_command = command
+    command_output = ""
+
+    if not command:
+        return "You didn't provide any command."
+
+    return Response(generate_output(command), content_type='text/plain')
 
 # Run the Flask application
 if __name__ == '__main__':
