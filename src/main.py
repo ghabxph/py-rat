@@ -131,6 +131,14 @@ def bash_long_running():
 
     return Response(generate_output(command), content_type='text/plain')
 
+@app.route('/bashl-logs')
+@basic_auth.required
+def bashl_logs():
+    global current_command, command_output
+
+    # Get the latest command output
+    return Response(f"{command_output}", content_type="text/plain")
+
 # Run the Flask application
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9000, debug=False)
